@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const EXAM_SUBJECTS = ["언어 이해", "언어 추리", "자료 해석", "창의 수리"];
   const PRACTICE_SUBJECTS = ["연습 모드"];
-  const QUESTIONS_PER_SUBJECT = 20;
+  const EXAM_QUESTIONS_PER_SUBJECT = 20;
+  const PRACTICE_QUESTION_LIMIT = Infinity;
   const SUBJECT_DURATION = 20 * 60;
   const BREAK_DURATION = 60;
 
@@ -103,7 +104,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function initSession(mode) {
     resetState(mode);
     state.subjects.forEach((subject) => {
-      state.questionsPerSubject[subject] = QUESTIONS_PER_SUBJECT;
+      state.questionsPerSubject[subject] =
+        state.mode === "exam"
+          ? EXAM_QUESTIONS_PER_SUBJECT
+          : PRACTICE_QUESTION_LIMIT;
       state.maxReachedQuestion[subject] = 1;
       ensureSubjectData(subject);
     });
@@ -186,7 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
       state.maxReachedQuestion[subject] = 1;
     }
     if (!state.questionsPerSubject[subject]) {
-      state.questionsPerSubject[subject] = QUESTIONS_PER_SUBJECT;
+      state.questionsPerSubject[subject] =
+        state.mode === "exam"
+          ? EXAM_QUESTIONS_PER_SUBJECT
+          : PRACTICE_QUESTION_LIMIT;
     }
   }
 
@@ -516,7 +523,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getSubjectQuestionLimit(subject) {
-    return state.questionsPerSubject[subject] || QUESTIONS_PER_SUBJECT;
+    if (state.mode === "practice") {
+      return PRACTICE_QUESTION_LIMIT;
+    }
+    return state.questionsPerSubject[subject] || EXAM_QUESTIONS_PER_SUBJECT;
   }
 
   function getAnswerForQuestion(subject, questionNumber) {
@@ -606,11 +616,11 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       });
       summaryHTML = `<h3>총점 ${totalCorrect} / ${totalQuestions}</h3>${subjectSummaries.join("")}`;
-    } else if (state.mode === "practice") {
-      summaryHTML =
-        "<p>연습 모드에서는 정답 비교 없이 문제별 풀이 시간과 답안을 확인할 수 있습니다.</p>";
+    // } else if (state.mode === "practice") {
+    //   summaryHTML =
+    //     "<p>연습 모드에서는 정답 비교 없이 문제별 풀이 시간과 답안을 확인할 수 있습니다.</p>";
     } else {
-      summaryHTML = "<p>정답 비교 없이 응시 기록을 확인합니다.</p>";
+      summaryHTML = "<p>정답 비교 없이 문제별 풀이 시간만 확인합니다.</p>";
     }
 
     const detailParts = ['<h3>문항별 상세 결과</h3>'];
