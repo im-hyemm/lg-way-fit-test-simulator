@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SKCT 실전 환경</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="page start-screen active" id="start-screen">
+        <h1 class="main-title">SKCT 실전 환경</h1>
+        <p class="sub-title">실제 시험과 동일한 환경에서 연습하세요.</p>
+        <button class="next-btn start-btn" id="start-btn">시험 시작</button>
+    </div>
+
+    <div class="page app-container" id="app-container">
+        <div class="header">
+            <span class="subject-title" id="subject-title"></span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="timer" id="timer"></span>
+                <button class="tool-btn" id="pause-btn" style="padding: 5px 10px;">❚❚</button>
+            </div>
+        </div>
+        <div class="question-area">
+            <div class="question-line">
+                <span class="question-number" id="question-number"></span>
+                <div class="options">
+                    <label><input type="radio" name="answer" value="1"><span>1</span></label>
+                    <label><input type="radio" name="answer" value="2"><span>2</span></label>
+                    <label><input type="radio" name="answer" value="3"><span>3</span></label>
+                    <label><input type="radio" name="answer" value="4"><span>4</span></label>
+                    <label><input type="radio" name="answer" value="5"><span>5</span></label>
+                </div>
+            </div>
+            <button class="next-btn" id="next-btn">Next</button>
+        </div>
+        <div class="tools-area">
+            <div class="notebook-tabs">
+                <div class="tab-buttons"><button class="tab-btn active" data-tab="memo">메모장</button><button
+                        class="tab-btn" data-tab="paint">그림판</button></div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="memo"><textarea placeholder="메모를 입력하세요..."></textarea></div>
+                    <div class="tab-pane" id="paint"><canvas id="paint-canvas"></canvas>
+                        <div class="paint-toolbar"><button class="tool-btn active" id="pen-btn">펜</button><button
+                                class="tool-btn" id="eraser-btn">지우개</button><button class="tool-btn"
+                                id="clear-canvas-btn">Clear</button></div>
+                    </div>
+                </div>
+            </div>
+            <div class="calculator"><input type="text" id="calc-display" readonly>
+                <div class="calc-buttons"><button class="calc-btn clear">C</button><button
+                        class="calc-btn operator">(</button><button class="calc-btn operator">)</button><button
+                        class="calc-btn operator">/</button><button class="calc-btn">7</button><button
+                        class="calc-btn">8</button><button class="calc-btn">9</button><button
+                        class="calc-btn operator">*</button><button class="calc-btn">4</button><button
+                        class="calc-btn">5</button><button class="calc-btn">6</button><button
+                        class="calc-btn operator">-</button><button class="calc-btn">1</button><button
+                        class="calc-btn">2</button><button class="calc-btn">3</button><button
+                        class="calc-btn operator">+</button><button class="calc-btn">.</button><button
+                        class="calc-btn">0</button><button class="calc-btn" id="backspace-btn">⌫</button><button
+                        class="calc-btn equal">=</button></div>
+            </div>
+        </div>
+        <div class="footer"><span>제작자 | SKALA 2기 4반 전혜민</span></div>
+    </div>
+
+    <div class="page break-screen" id="break-screen">
+        <div class="break-title">쉬는 시간</div>
+        <div class="break-timer" id="break-timer"></div>
+        <p class="next-subject-info" id="next-subject-info"></p>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 25px; align-items: center;">
+            <button class="next-btn" id="skip-break-btn"
+                style="width: auto; padding: 0 20px; height: 40px; line-height: 40px;">
+                쉬는 시간 건너뛰기
+            </button>
+            <button class="tool-btn" id="pause-break-btn"
+                style="padding: 5px 10px; height: 40px; width: 40px;">❚❚</button>
+        </div>
+    </div>
+
+    <div class="page answer-input-page" id="answer-input-page">
+        <div id="answer-choice">
+            <h2>시험이 종료되었습니다.</h2>
+            <p style="color: var(--light-text-color); margin-top: -10px; margin-bottom: 30px;">정답을 입력하여 채점하시겠습니까?</p>
+            <div class="choice-buttons">
+                <button class="choice-btn" id="show-time-only-btn">아니요, 풀이 시간만 보기</button>
+                <button class="choice-btn score-btn" id="start-scoring-btn">예, 정답 입력하기</button>
+            </div>
+        </div>
+        <div id="answer-form-container" style="display: none;">
+            <h2>정답 입력</h2>
+            <div class="answer-form" id="answer-form"></div>
+            <button class="next-btn submit-answers-btn" id="submit-answers-btn">채점 완료</button>
+        </div>
+    </div>
+
+    <div class="page result-page" id="result-page">
+        <h2>📜 시험 결과</h2>
+        <div class="result-page-content" id="result-page-content"></div>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
