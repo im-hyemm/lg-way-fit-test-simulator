@@ -1,228 +1,886 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const state = {
-        subjects: ['언어이해', '언어추리', '자료해석', '창의수리'], currentSubjectIndex: 0, currentQuestionIndex: 0, questionsPerSubject: 20,
-        timePerSubject: 20 * 60, breakTime: 1 * 60, remainingTime: 0, isBreak: false, timerInterval: null,
-        userAnswers: {}, timePerQuestion: {}, questionStartTime: null, correctAnswers: {}, paintTool: 'pen',
-        isPaused: false
-    };
-    const dom = {
-        pages: document.querySelectorAll('.page'), startScreen: document.getElementById('start-screen'), startBtn: document.getElementById('start-btn'),
-        appContainer: document.getElementById('app-container'), breakScreen: document.getElementById('break-screen'), answerInputPage: document.getElementById('answer-input-page'), resultPage: document.getElementById('result-page'),
-        header: document.getElementById('header'), subjectTitle: document.getElementById('subject-title'), timer: document.getElementById('timer'),
-        breakTimer: document.getElementById('break-timer'), nextSubjectInfo: document.getElementById('next-subject-info'),
-        questionArea: document.getElementById('question-area'), questionNumber: document.getElementById('question-number'), options: document.querySelectorAll('input[name="answer"]'), nextBtn: document.getElementById('next-btn'),
-        answerChoice: document.getElementById('answer-choice'), showTimeOnlyBtn: document.getElementById('show-time-only-btn'), startScoringBtn: document.getElementById('start-scoring-btn'),
-        answerFormContainer: document.getElementById('answer-form-container'), answerForm: document.getElementById('answer-form'), submitAnswersBtn: document.getElementById('submit-answers-btn'),
-        resultPageContent: document.getElementById('result-page-content'),
-        tabButtons: document.querySelectorAll('.tab-btn'), tabPanes: document.querySelectorAll('.tab-pane'), memoText: document.querySelector('#memo textarea'), canvas: document.getElementById('paint-canvas'), canvasCtx: document.getElementById('paint-canvas').getContext('2d'), calcDisplay: document.getElementById('calc-display'), calcButtons: document.querySelector('.calc-buttons'),
-        penBtn: document.getElementById('pen-btn'), eraserBtn: document.getElementById('eraser-btn'), clearCanvasBtn: document.getElementById('clear-canvas-btn'),
-        pauseBtn: document.getElementById('pause-btn'),
-        pauseBreakBtn: document.getElementById('pause-break-btn'),
-        skipBreakBtn: document.getElementById('skip-break-btn')
-    };
-    const ctx = dom.canvasCtx; let isDrawing = false; let lastX = 0; let lastY = 0;
-    function togglePause(event) {
-        const clickedButton = event.currentTarget;
+document.addEventListener("DOMContentLoaded", () => {
+  const EXAM_SUBJECTS = ["언어 이해", "언어 추리", "자료 해석", "창의 수리"];
+  const PRACTICE_SUBJECTS = ["연습 모드"];
+  const QUESTIONS_PER_SUBJECT = 20;
+  const SUBJECT_DURATION = 20 * 60;
+  const BREAK_DURATION = 60;
 
-        state.isPaused = !state.isPaused;
-        if (state.isPaused) {
-            clearInterval(state.timerInterval);
-            clickedButton.textContent = '▶';
-        } else {
-            startTimer();
-            clickedButton.textContent = '❚❚';
-            dom.pauseOverlay.style.display = 'none';
-        }
-    }
-    function skipBreak() {
-        clearInterval(state.timerInterval);
-        state.currentSubjectIndex++;
-        startSubject();
-    }
-    function switchPage(pageToShow) { dom.pages.forEach(p => p.classList.remove('active')); pageToShow.classList.add('active'); }
-    function resizeCanvas() { const rect = dom.canvas.parentElement.getBoundingClientRect(); const toolbarHeight = dom.penBtn.parentElement.offsetHeight; dom.canvas.width = rect.width; dom.canvas.height = rect.height - toolbarHeight; }
-    function draw(e) { if (!isDrawing || state.isPaused) return; e.preventDefault(); const [x, y] = getCoords(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); if (state.paintTool === 'pen') { ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; } else { ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 15; } ctx.lineCap = 'round'; ctx.stroke();[lastX, lastY] = [x, y]; }
-    function getCoords(e) { const rect = dom.canvas.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return [clientX - rect.left, clientY - rect.top]; }
-    function startDrawing(e) { if (state.isPaused) return; isDrawing = true;[lastX, lastY] = getCoords(e); }
-    function stopDrawing() { isDrawing = false; }
-    dom.canvas.addEventListener('mousedown', startDrawing); dom.canvas.addEventListener('mousemove', draw); dom.canvas.addEventListener('mouseup', stopDrawing); dom.canvas.addEventListener('mouseout', stopDrawing); dom.canvas.addEventListener('touchstart', startDrawing, { passive: false }); dom.canvas.addEventListener('touchmove', draw, { passive: false }); dom.canvas.addEventListener('touchend', stopDrawing);
-    dom.penBtn.addEventListener('click', () => { state.paintTool = 'pen'; dom.penBtn.classList.add('active'); dom.eraserBtn.classList.remove('active'); });
-    dom.eraserBtn.addEventListener('click', () => { state.paintTool = 'eraser'; dom.eraserBtn.classList.add('active'); dom.penBtn.classList.remove('active'); });
-    dom.clearCanvasBtn.addEventListener('click', () => { ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height); });
-    function appendToCalcDisplay(value) { if (state.isPaused) return; dom.calcDisplay.value += value; }
-    function clearCalcDisplay() { dom.calcDisplay.value = ''; }
-    function backspaceCalc() { dom.calcDisplay.value = dom.calcDisplay.value.slice(0, -1); }
-    function calculateResult() {
-        if (state.isPaused) return;
-        try {
-            const result = new Function('return ' + dom.calcDisplay.value.replace(/[^-()\d/*+.]/g, ''))();
-            const roundedResult = parseFloat(result.toFixed(10));
-            dom.calcDisplay.value = roundedResult;
-        } catch {
-            dom.calcDisplay.value = 'Error';
-        }
-    }
-    dom.calcButtons.addEventListener('click', e => { if (e.target.tagName !== 'BUTTON') return; const key = e.target.textContent; if (key === 'C') { clearCalcDisplay(); } else if (key === '⌫') { backspaceCalc(); } else if (key === '=') { calculateResult(); } else { appendToCalcDisplay(key); } });
-    document.addEventListener('keydown', (e) => {
-        if (state.isPaused) return;
-        if (document.activeElement === dom.memoText || document.activeElement.tagName === 'INPUT') return; const key = e.key; if (key === 'Escape') { e.preventDefault(); return; } if ((key >= '0' && key <= '9') || ['+', '-', '*', '/', '.', '(', ')'].includes(key)) { e.preventDefault(); appendToCalcDisplay(key); } else if (key === 'Enter' || key === '=') { e.preventDefault(); calculateResult(); } else if (key === 'Backspace') { e.preventDefault(); backspaceCalc(); }
+  const state = {
+    mode: null,
+    subjects: [],
+    currentSubjectIndex: 0,
+    currentQuestionIndex: 0,
+    remainingTime: 0,
+    timerInterval: null,
+    practiceTimerInterval: null,
+    questionStartTime: null,
+    isBreak: false,
+    isPaused: false,
+    userAnswers: {},
+    timePerQuestion: {},
+    correctAnswers: {},
+    maxReachedQuestion: {},
+    questionsPerSubject: {},
+  };
+
+  const dom = {
+    pages: document.querySelectorAll(".page"),
+    startScreen: document.getElementById("start-screen"),
+    examModeBtn: document.getElementById("exam-mode-btn"),
+    practiceModeBtn: document.getElementById("practice-mode-btn"),
+    appContainer: document.getElementById("app-container"),
+    breakScreen: document.getElementById("break-screen"),
+    answerInputPage: document.getElementById("answer-input-page"),
+    resultPage: document.getElementById("result-page"),
+    subjectTitle: document.getElementById("subject-title"),
+    timer: document.getElementById("timer"),
+    practiceHeaderTime: document.getElementById("practice-header-time"),
+    practiceHeaderValue: document.getElementById("practice-header-value"),
+    practiceExitBtn: document.getElementById("practice-exit-btn"),
+    pauseBtn: document.getElementById("pause-btn"),
+    pauseBreakBtn: document.getElementById("pause-break-btn"),
+    skipBreakBtn: document.getElementById("skip-break-btn"),
+    breakTimer: document.getElementById("break-timer"),
+    nextSubjectInfo: document.getElementById("next-subject-info"),
+    questionNumber: document.getElementById("question-number"),
+    options: document.querySelectorAll('input[name="answer"]'),
+    answerOptionsContainer: document.getElementById("answer-options"),
+    prevBtn: document.getElementById("prev-btn"),
+    nextBtn: document.getElementById("next-btn"),
+    questionJump: document.getElementById("question-jump"),
+    answerChoice: document.getElementById("answer-choice"),
+    answerChoiceTitle: document.querySelector("#answer-choice h2"),
+    answerChoiceDesc: document.querySelector(".answer-choice-desc"),
+    showTimeOnlyBtn: document.getElementById("show-time-only-btn"),
+    startScoringBtn: document.getElementById("start-scoring-btn"),
+    answerFormContainer: document.getElementById("answer-form-container"),
+    answerForm: document.getElementById("answer-form"),
+    submitAnswersBtn: document.getElementById("submit-answers-btn"),
+    resultPageContent: document.getElementById("result-page-content"),
+    resultPageTitle: document.querySelector(".result-page h2"),
+    tabButtons: document.querySelectorAll(".tab-btn"),
+    tabPanes: document.querySelectorAll(".tab-pane"),
+    memoText: document.querySelector("#memo textarea"),
+    canvas: document.getElementById("paint-canvas"),
+    calcDisplay: document.getElementById("calc-display"),
+    calcButtons: document.querySelector(".calc-buttons"),
+    penBtn: document.getElementById("pen-btn"),
+    eraserBtn: document.getElementById("eraser-btn"),
+    clearCanvasBtn: document.getElementById("clear-canvas-btn"),
+  };
+
+  const ctx = dom.canvas.getContext("2d");
+  let isDrawing = false;
+  let lastPointer = { x: 0, y: 0 };
+  let lastCheckedOption = null;
+
+  attachEventHandlers();
+  setupTabs();
+  setupCanvas();
+  setupCalculator();
+  setupOptionToggle();
+
+  function attachEventHandlers() {
+    dom.examModeBtn.addEventListener("click", () => initSession("exam"));
+    dom.practiceModeBtn.addEventListener("click", () => initSession("practice"));
+    dom.nextBtn.addEventListener("click", nextQuestion);
+    dom.prevBtn.addEventListener("click", prevQuestion);
+    dom.questionJump.addEventListener("change", handleQuestionJump);
+    dom.pauseBtn.addEventListener("click", toggleExamPause);
+    dom.pauseBreakBtn.addEventListener("click", toggleBreakPause);
+    dom.skipBreakBtn.addEventListener("click", skipBreak);
+    dom.practiceExitBtn.addEventListener("click", () => {
+      if (confirm("연습을 종료하시겠습니까?")) {
+        saveActiveQuestion();
+        finishPractice();
+      }
     });
-    dom.tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            dom.tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            dom.tabPanes.forEach(pane => {
-                pane.classList.remove('active');
-                if (pane.id === button.dataset.tab) {
-                    pane.classList.add('active');
-                }
-            });
-        });
-    }); function resetTools() { dom.memoText.value = ''; dom.clearCanvasBtn.click(); dom.penBtn.click(); clearCalcDisplay(); }
-    function init() { state.subjects.forEach(subject => { state.userAnswers[subject] = {}; state.timePerQuestion[subject] = {}; }); startSubject(); }
-    function startSubject() {
-        state.isBreak = false;
-        dom.pauseBtn.style.display = 'inline-block';
+    dom.showTimeOnlyBtn.addEventListener("click", () => showResults(false));
+    dom.startScoringBtn.addEventListener("click", showScoringForm);
+    dom.submitAnswersBtn.addEventListener("click", submitAnswers);
+  }
+
+  function initSession(mode) {
+    resetState(mode);
+    state.subjects.forEach((subject) => {
+      state.questionsPerSubject[subject] = QUESTIONS_PER_SUBJECT;
+      state.maxReachedQuestion[subject] = 1;
+      ensureSubjectData(subject);
+    });
+    applyModeUI();
+    switchPage(dom.appContainer);
+    startSubject();
+  }
+
+  function resetState(mode) {
+    clearInterval(state.timerInterval);
+    clearInterval(state.practiceTimerInterval);
+    state.mode = mode;
+    state.subjects = mode === "exam" ? [...EXAM_SUBJECTS] : [...PRACTICE_SUBJECTS];
+    state.currentSubjectIndex = 0;
+    state.currentQuestionIndex = 0;
+    state.remainingTime = 0;
+    state.timerInterval = null;
+    state.practiceTimerInterval = null;
+    state.questionStartTime = null;
+    state.isBreak = false;
+    state.isPaused = false;
+    state.userAnswers = {};
+    state.timePerQuestion = {};
+    state.correctAnswers = {};
+    state.maxReachedQuestion = {};
+    state.questionsPerSubject = {};
+    dom.questionJump.innerHTML = "";
+    dom.questionJump.disabled = true;
+    dom.practiceHeaderValue.textContent = "00:00";
+    dom.practiceHeaderTime.classList.remove("active");
+    dom.pauseBtn.textContent = "⏸";
+    dom.pauseBreakBtn.textContent = "⏸";
+  }
+
+  function applyModeUI() {
+    const isPractice = state.mode === "practice";
+    dom.subjectTitle.style.display = isPractice ? "none" : "inline-block";
+    dom.timer.style.display = isPractice ? "none" : "inline-block";
+    dom.pauseBtn.style.display = isPractice ? "none" : "inline-flex";
+    dom.practiceHeaderTime.style.display = isPractice ? "inline-flex" : "none";
+    dom.practiceExitBtn.style.display = isPractice ? "inline-flex" : "none";
+  }
+
+  function startSubject() {
+    state.isBreak = false;
+    state.isPaused = false;
+    dom.pauseBtn.textContent = "⏸";
+    applyModeUI();
+    const subject = getCurrentSubject();
+    ensureSubjectData(subject);
+    state.currentQuestionIndex = 0;
+    state.maxReachedQuestion[subject] = Math.max(
+      state.maxReachedQuestion[subject] || 0,
+      state.currentQuestionIndex + 1,
+    );
+    dom.questionJump.disabled = false;
+    dom.practiceHeaderValue.textContent = "00:00";
+    populateQuestionJump();
+    updateQuestionDisplay();
+    setTimeout(resizeCanvas, 0);
+    resetTools();
+    if (state.mode === "exam") {
+      dom.subjectTitle.textContent = subject;
+      state.remainingTime = SUBJECT_DURATION;
+      updateTimerDisplay();
+      startTimer();
+    } else {
+      dom.subjectTitle.textContent = "";
+    }
+  }
+
+  function ensureSubjectData(subject) {
+    if (!state.userAnswers[subject]) {
+      state.userAnswers[subject] = {};
+    }
+    if (!state.timePerQuestion[subject]) {
+      state.timePerQuestion[subject] = {};
+    }
+    if (!state.maxReachedQuestion[subject]) {
+      state.maxReachedQuestion[subject] = 1;
+    }
+    if (!state.questionsPerSubject[subject]) {
+      state.questionsPerSubject[subject] = QUESTIONS_PER_SUBJECT;
+    }
+  }
+
+  function getCurrentSubject() {
+    return state.subjects[state.currentSubjectIndex];
+  }
+
+  function populateQuestionJump() {
+    const subject = getCurrentSubject();
+    const options = [];
+    const maxQuestion = Math.max(
+      getMaxReachedQuestion(subject),
+      state.currentQuestionIndex + 1,
+    );
+    for (let i = 1; i <= maxQuestion; i += 1) {
+      const answered = getAnswerForQuestion(subject, i) !== "-";
+      const label = answered ? `${i}번 ✔️` : `${i}번`;
+      options.push(`<option value="${i}">${label}</option>`);
+    }
+    dom.questionJump.innerHTML = options.join("");
+    dom.questionJump.value = String(state.currentQuestionIndex + 1);
+  }
+
+  function updateQuestionDisplay() {
+    const subject = getCurrentSubject();
+    const questionNumber = state.currentQuestionIndex + 1;
+    dom.questionNumber.textContent = `문제 ${questionNumber}`;
+    const savedAnswer = getAnswerForQuestion(subject, questionNumber);
+    let matchedOption = null;
+    dom.options.forEach((option) => {
+      const checked =
+        savedAnswer !== "-" && Number(option.value) === savedAnswer;
+      option.checked = checked;
+      if (checked) {
+        matchedOption = option;
+      }
+    });
+    lastCheckedOption = matchedOption;
+    populateQuestionJump();
+    updateNavigationState();
+    startQuestionTimer();
+  }
+
+  function updateNavigationState() {
+    dom.prevBtn.disabled = state.currentQuestionIndex === 0;
+    dom.questionJump.value = String(state.currentQuestionIndex + 1);
+  }
+
+  function startQuestionTimer() {
+    state.questionStartTime = Date.now();
+    if (state.mode === "practice") {
+      updatePracticeHeaderTime();
+      startPracticeTimer();
+    }
+  }
+
+  function startPracticeTimer() {
+    clearInterval(state.practiceTimerInterval);
+    updatePracticeHeaderTime();
+    state.practiceTimerInterval = setInterval(updatePracticeHeaderTime, 1000);
+  }
+
+  function stopPracticeTimer() {
+    clearInterval(state.practiceTimerInterval);
+    state.practiceTimerInterval = null;
+  }
+
+  function updatePracticeHeaderTime() {
+    if (state.mode !== "practice") return;
+    const subject = getCurrentSubject();
+    const questionNumber = state.currentQuestionIndex + 1;
+    const base = state.timePerQuestion[subject][questionNumber] || 0;
+    const running = state.questionStartTime
+      ? Math.max(0, Math.round((Date.now() - state.questionStartTime) / 1000))
+      : 0;
+    dom.practiceHeaderValue.textContent = formatSeconds(base + running);
+  }
+
+  function startTimer() {
+    clearInterval(state.timerInterval);
+    updateTimerDisplay();
+    state.timerInterval = setInterval(() => {
+      if (!state.isPaused) {
+        state.remainingTime -= 1;
+        if (state.remainingTime < 0) state.remainingTime = 0;
+        updateTimerDisplay();
+        if (state.remainingTime === 0) {
+          clearInterval(state.timerInterval);
+          handleTimerComplete();
+        }
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+
+  function updateTimerDisplay() {
+    const display = formatSeconds(state.remainingTime);
+    if (state.isBreak) {
+      dom.breakTimer.textContent = display;
+    } else {
+      dom.timer.textContent = display;
+    }
+  }
+
+  function handleTimerComplete() {
+    if (state.isBreak) {
+      state.isBreak = false;
+      dom.pauseBreakBtn.textContent = "⏸";
+      state.currentSubjectIndex += 1;
+      if (state.currentSubjectIndex >= state.subjects.length) {
+        finishExam();
+      } else {
         switchPage(dom.appContainer);
-        setTimeout(resizeCanvas, 0);
-        state.currentQuestionIndex = 0;
-        state.remainingTime = state.timePerSubject;
-        const subject = state.subjects[state.currentSubjectIndex];
-        dom.subjectTitle.textContent = subject;
-        updateQuestionDisplay();
-        startTimer();
-        state.questionStartTime = Date.now();
-    }
-    function startBreak() {
-        dom.pauseBtn.style.display = 'none';
-        recordData(); const subject = state.subjects[state.currentSubjectIndex]; for (let i = state.currentQuestionIndex + 1; i <= state.questionsPerSubject; i++) { state.userAnswers[subject][i] = "N/A"; state.timePerQuestion[subject][i] = 0; } if (state.currentSubjectIndex >= state.subjects.length - 1) { endExam(); return; } state.isBreak = true; switchPage(dom.breakScreen); const nextSubject = state.subjects[state.currentSubjectIndex + 1]; dom.nextSubjectInfo.textContent = `다음 과목: ${nextSubject}`; state.remainingTime = state.breakTime; startTimer();
-    }
-    function updateTimerDisplay() { const mins = String(Math.floor(state.remainingTime / 60)).padStart(2, '0'); const secs = String(state.remainingTime % 60).padStart(2, '0'); const timeText = `${mins}:${secs}`; if (state.isBreak) { dom.breakTimer.textContent = timeText; } else { dom.timer.textContent = timeText; } }
-    function nextQuestion() {
-        if (state.isPaused) return;
-        const selectedOption = document.querySelector('input[name="answer"]:checked');
-        if (!selectedOption) {
-            const userConfirmed = confirm("정답을 선택하지 않았습니다.\n다음 문제로 넘어가시겠습니까?");
-            if (!userConfirmed) {
-                return;
-            }
-        }
-        resetTools();
-        recordData();
-        state.currentQuestionIndex++;
-        if (state.currentQuestionIndex >= state.questionsPerSubject) {
-            startBreak();
+        applyModeUI();
+        startSubject();
+      }
+    } else {
+      saveActiveQuestion();
+      const subject = getCurrentSubject();
+      const questionLimit = getSubjectQuestionLimit(subject);
+      if (state.currentQuestionIndex >= questionLimit - 1) {
+        if (state.currentSubjectIndex >= state.subjects.length - 1) {
+          finishExam();
         } else {
-            updateQuestionDisplay();
-            state.questionStartTime = Date.now();
+          startBreak();
         }
+      } else {
+        changeQuestion(state.currentQuestionIndex + 1);
+      }
     }
-    function recordData() { const subject = state.subjects[state.currentSubjectIndex]; const qNum = state.currentQuestionIndex + 1; const timeTaken = Math.round((Date.now() - state.questionStartTime) / 1000); state.timePerQuestion[subject][qNum] = timeTaken; const selectedOption = document.querySelector('input[name="answer"]:checked'); state.userAnswers[subject][qNum] = selectedOption ? parseInt(selectedOption.value) : "N/A"; }
-    function updateQuestionDisplay() {
-        dom.questionNumber.textContent = `문제 ${state.currentQuestionIndex + 1}`;
-        dom.options.forEach(opt => opt.checked = false);
-        lastChecked = null;
-    } function startTimer() { clearInterval(state.timerInterval); updateTimerDisplay(); state.timerInterval = setInterval(() => { state.remainingTime--; updateTimerDisplay(); if (state.remainingTime <= 0) { clearInterval(state.timerInterval); if (state.isBreak) { state.currentSubjectIndex++; startSubject(); } else { startBreak(); } } }, 1000); }
-    function endExam() { clearInterval(state.timerInterval); switchPage(dom.answerInputPage); }
-    dom.showTimeOnlyBtn.addEventListener('click', () => showResults(false));
-    dom.startScoringBtn.addEventListener('click', () => {
-        dom.answerChoice.style.display = 'none';
-        dom.answerFormContainer.style.display = 'flex';
-        let formHTML = '';
-        state.subjects.forEach(subject => {
-            formHTML += `<h3>${subject}</h3><div class="answer-grid">`;
-            for (let i = 1; i <= state.questionsPerSubject; i++) { formHTML += `<div class="answer-item"><label for="${subject}-${i}">${i}번</label><input type="number" id="${subject}-${i}" min="1" max="5"></div>`; }
-            formHTML += `</div>`;
-        });
-        dom.answerForm.innerHTML = formHTML;
-    });
+  }
 
-    dom.submitAnswersBtn.addEventListener('click', () => {
-        const allAnswerInputs = dom.answerForm.querySelectorAll('input[type="number"]');
-        let isAllFilled = true;
-        for (const input of allAnswerInputs) {
-            if (input.value.trim() === '') {
-                isAllFilled = false;
-                break;
-            }
+  function toggleExamPause() {
+    if (state.mode !== "exam" || state.isBreak) return;
+    state.isPaused = !state.isPaused;
+    dom.pauseBtn.textContent = state.isPaused ? "▶" : "⏸";
+  }
+
+  function toggleBreakPause() {
+    if (!state.isBreak) return;
+    state.isPaused = !state.isPaused;
+    dom.pauseBreakBtn.textContent = state.isPaused ? "▶" : "⏸";
+  }
+
+  function startBreak() {
+    state.isBreak = true;
+    state.isPaused = false;
+    stopPracticeTimer();
+    stopTimer();
+    state.remainingTime = BREAK_DURATION;
+    dom.pauseBtn.style.display = "none";
+    dom.pauseBreakBtn.textContent = "⏸";
+    dom.nextSubjectInfo.textContent = `다음 과목: ${state.subjects[state.currentSubjectIndex + 1]}`;
+    switchPage(dom.breakScreen);
+    updateTimerDisplay();
+    startTimer();
+  }
+
+  function skipBreak() {
+    if (!state.isBreak) return;
+    stopTimer();
+    state.isBreak = false;
+    state.currentSubjectIndex += 1;
+    if (state.currentSubjectIndex >= state.subjects.length) {
+      finishExam();
+    } else {
+      switchPage(dom.appContainer);
+      applyModeUI();
+      startSubject();
+    }
+  }
+
+  function nextQuestion() {
+    if (!state.mode || state.isBreak) return;
+    if (state.mode === "exam" && !validateAnswerBeforeMove()) {
+      return;
+    }
+    const subject = getCurrentSubject();
+    const questionLimit = getSubjectQuestionLimit(subject);
+    if (state.currentQuestionIndex >= questionLimit - 1) {
+      saveActiveQuestion();
+      if (state.mode === "practice") {
+        if (confirm("마지막 문항입니다. 연습을 종료할까요?")) {
+          finishPractice();
+        } else {
+          startQuestionTimer();
         }
-        if (!isAllFilled) {
-            alert('정답을 입력해주세요.');
-            return;
+      } else {
+        if (state.currentSubjectIndex >= state.subjects.length - 1) {
+          finishExam();
+        } else {
+          startBreak();
         }
-        state.subjects.forEach(subject => {
-            state.correctAnswers[subject] = {};
-            for (let i = 1; i <= state.questionsPerSubject; i++) {
-                const input = document.getElementById(`${subject}-${i}`);
-                state.correctAnswers[subject][i] = input.value ? parseInt(input.value) : 0;
-            }
-        });
-        showResults(true);
+      }
+    } else {
+      changeQuestion(state.currentQuestionIndex + 1);
+    }
+  }
+
+  function prevQuestion() {
+    if (state.currentQuestionIndex === 0 || state.isBreak) return;
+    changeQuestion(state.currentQuestionIndex - 1);
+  }
+
+  function handleQuestionJump(event) {
+    const target = Number(event.target.value);
+    if (Number.isNaN(target)) return;
+    const targetIndex = target - 1;
+    if (targetIndex === state.currentQuestionIndex) return;
+    changeQuestion(targetIndex);
+  }
+
+  function changeQuestion(targetIndex) {
+    const subject = getCurrentSubject();
+    const questionLimit = getSubjectQuestionLimit(subject);
+    if (
+      targetIndex < 0 ||
+      targetIndex >= questionLimit ||
+      targetIndex === state.currentQuestionIndex
+    ) {
+      return;
+    }
+    saveActiveQuestion();
+    state.currentQuestionIndex = targetIndex;
+    state.maxReachedQuestion[subject] = Math.max(
+      state.maxReachedQuestion[subject] || 0,
+      targetIndex + 1,
+    );
+    resetTools();
+    updateQuestionDisplay();
+  }
+
+  function validateAnswerBeforeMove() {
+    const selected = getSelectedOption();
+    if (!selected) {
+      return confirm("답안을 선택하지 않았습니다.\n다음 문항으로 이동할까요?");
+    }
+    return true;
+  }
+
+  function saveActiveQuestion() {
+    const subject = getCurrentSubject();
+    ensureSubjectData(subject);
+    const questionNumber = state.currentQuestionIndex + 1;
+    if (!state.timePerQuestion[subject][questionNumber]) {
+      state.timePerQuestion[subject][questionNumber] = 0;
+    }
+    if (state.questionStartTime) {
+      const elapsed = Math.max(
+        0,
+        Math.round((Date.now() - state.questionStartTime) / 1000),
+      );
+      state.timePerQuestion[subject][questionNumber] += elapsed;
+      state.questionStartTime = null;
+    }
+    const selected = getSelectedOption();
+    state.userAnswers[subject][questionNumber] = selected
+      ? Number(selected.value)
+      : "-";
+    state.maxReachedQuestion[subject] = Math.max(
+      state.maxReachedQuestion[subject] || 0,
+      questionNumber,
+    );
+    if (state.mode === "practice") {
+      stopPracticeTimer();
+      updatePracticeHeaderTime();
+    }
+    populateQuestionJump();
+  }
+
+  function getSelectedOption() {
+    return Array.from(dom.options).find((option) => option.checked) || null;
+  }
+
+  function finishPractice() {
+    stopPracticeTimer();
+    stopTimer();
+    state.isBreak = false;
+    prepareAnswerChoiceText("practice");
+    switchPage(dom.answerInputPage);
+  }
+
+  function finishExam() {
+    stopPracticeTimer();
+    stopTimer();
+    state.isBreak = false;
+    prepareAnswerChoiceText("exam");
+    switchPage(dom.answerInputPage);
+  }
+
+  function prepareAnswerChoiceText(mode) {
+    if (mode === "practice") {
+      dom.answerChoiceTitle.textContent = "연습이 종료되었습니다.";
+      dom.answerChoiceDesc.textContent = "정답을 입력하여 채점을 진행하시겠어요?";
+    } else {
+      dom.answerChoiceTitle.textContent = "시험이 종료되었습니다.";
+      dom.answerChoiceDesc.textContent = "정답을 입력하여 채점을 진행하시겠어요?";
+    }
+    dom.answerChoice.style.display = "flex";
+    dom.answerChoice.style.flexDirection = "column";
+    dom.answerChoice.style.alignItems = "center";
+    dom.answerChoice.style.gap = "16px";
+    dom.answerFormContainer.style.display = "none";
+  }
+
+  function showScoringForm() {
+    dom.answerChoice.style.display = "none";
+    dom.answerFormContainer.style.display = "flex";
+    const parts = [];
+    state.subjects.forEach((subject) => {
+      const subjectId = subject.replace(/\s+/g, "-").toLowerCase();
+      const questionCount = getScoringQuestionCount(subject);
+      parts.push(`<h3>${subject}</h3>`);
+      parts.push('<div class="answer-grid">');
+      for (let i = 1; i <= questionCount; i += 1) {
+        parts.push(
+          `<div class="answer-item"><label for="${subjectId}-${i}">${i}번</label><input type="number" id="${subjectId}-${i}" min="1" max="5" inputmode="numeric"></div>`,
+        );
+      }
+      parts.push("</div>");
     });
-    function showResults(shouldScore) {
-        switchPage(dom.resultPage);
-        let summaryHTML = '';
-        let detailsHTML = '';
+    dom.answerForm.innerHTML = parts.join("");
+  }
+
+  function getSubjectQuestionLimit(subject) {
+    return state.questionsPerSubject[subject] || QUESTIONS_PER_SUBJECT;
+  }
+
+  function getAnswerForQuestion(subject, questionNumber) {
+    const answers = state.userAnswers[subject] || {};
+    const value = answers[questionNumber];
+    return value === undefined ? "-" : value;
+  }
+
+  function getTimeForQuestion(subject, questionNumber) {
+    const times = state.timePerQuestion[subject] || {};
+    const value = times[questionNumber];
+    return typeof value === "number" ? value : 0;
+  }
+
+  function getMaxReachedQuestion(subject) {
+    const explicit = state.maxReachedQuestion[subject] || 0;
+    const answerKeys = state.userAnswers[subject]
+      ? Object.keys(state.userAnswers[subject]).map((key) => Number(key))
+      : [];
+    const timeKeys = state.timePerQuestion[subject]
+      ? Object.keys(state.timePerQuestion[subject]).map((key) => Number(key))
+      : [];
+    const highestRecorded = Math.max(0, ...answerKeys, ...timeKeys);
+    return Math.max(explicit, highestRecorded, 1);
+  }
+
+  function getScoringQuestionCount(subject) {
+    if (state.mode === "practice") {
+      return getMaxReachedQuestion(subject);
+    }
+    return Math.max(getSubjectQuestionLimit(subject), 1);
+  }
+
+  function submitAnswers() {
+    const inputs = dom.answerForm.querySelectorAll('input[type="number"]');
+    const allFilled = Array.from(inputs).every(
+      (input) => input.value.trim() !== "",
+    );
+    if (!allFilled) {
+      alert("모든 정답을 입력해 주세요.");
+      return;
+    }
+    state.correctAnswers = {};
+    state.subjects.forEach((subject) => {
+      const subjectId = subject.replace(/\s+/g, "-").toLowerCase();
+      state.correctAnswers[subject] = {};
+      const questionCount = getScoringQuestionCount(subject);
+      for (let i = 1; i <= questionCount; i += 1) {
+        const input = document.getElementById(`${subjectId}-${i}`);
+        state.correctAnswers[subject][i] = input ? Number(input.value) : undefined;
+      }
+    });
+    showResults(true);
+  }
+
+  function showResults(shouldScore) {
+    stopTimer();
+    stopPracticeTimer();
+    switchPage(dom.resultPage);
+    dom.resultPageTitle.textContent =
+      state.mode === "practice" ? "연습 결과" : "시험 결과";
+
+    let summaryHTML = "";
+    if (shouldScore) {
+      let totalCorrect = 0;
+      let totalQuestions = 0;
+      const subjectSummaries = [];
+      state.subjects.forEach((subject) => {
+        const questionCount = getMaxReachedQuestion(subject);
+        const correctMap = state.correctAnswers[subject] || {};
+        let correctCount = 0;
+        for (let i = 1; i <= questionCount; i += 1) {
+          const answer = getAnswerForQuestion(subject, i);
+          const correct = correctMap[i];
+          if (
+            answer !== "-" &&
+            typeof correct === "number" &&
+            Number(answer) === correct
+          ) {
+            correctCount += 1;
+          }
+        }
+        totalCorrect += correctCount;
+        totalQuestions += questionCount;
+        subjectSummaries.push(
+          `<p><strong>${subject}</strong> ${correctCount} / ${questionCount}</p>`,
+        );
+      });
+      summaryHTML = `<h3>총점 ${totalCorrect} / ${totalQuestions}</h3>${subjectSummaries.join("")}`;
+    } else if (state.mode === "practice") {
+      summaryHTML =
+        "<p>연습 모드에서는 정답 비교 없이 문제별 풀이 시간과 답안을 확인할 수 있습니다.</p>";
+    } else {
+      summaryHTML = "<p>정답 비교 없이 응시 기록을 확인합니다.</p>";
+    }
+
+    const detailParts = ['<h3>문항별 상세 결과</h3>'];
+    state.subjects.forEach((subject) => {
+      const questionCount = getMaxReachedQuestion(subject);
+      const correctMap = state.correctAnswers[subject] || {};
+      detailParts.push(`<h4>${subject}</h4>`);
+      detailParts.push('<table class="result-table"><thead><tr>');
+      detailParts.push("<th>문항</th><th>선택 답안</th>");
+      if (shouldScore) {
+        detailParts.push("<th>정답</th><th>정오</th>");
+      }
+      detailParts.push("<th>소요 시간</th></tr></thead><tbody>");
+      for (let i = 1; i <= questionCount; i += 1) {
+        const answer = getAnswerForQuestion(subject, i);
+        const elapsedSeconds = getTimeForQuestion(subject, i);
+        detailParts.push("<tr>");
+        detailParts.push(`<td>${i}</td>`);
+        detailParts.push(`<td>${answer === "-" ? "-" : answer}</td>`);
         if (shouldScore) {
-            let totalCorrect = 0;
-            let totalQuestions = state.subjects.length * state.questionsPerSubject;
-            state.subjects.forEach(subject => {
-                let correctCount = 0;
-                for (let i = 1; i <= state.questionsPerSubject; i++) {
-                    if (state.userAnswers[subject][i] !== "N/A" && state.userAnswers[subject][i] === state.correctAnswers[subject][i]) {
-                        correctCount++;
-                    }
-                }
-                totalCorrect += correctCount;
-                summaryHTML += `<p><strong>${subject}:</strong> ${correctCount} / ${state.questionsPerSubject}</p>`;
-            });
-            summaryHTML = `<h3>총점: ${totalCorrect} / ${totalQuestions}</h3>` + summaryHTML;
+          const correct = correctMap[i];
+          const isCorrect =
+            answer !== "-" &&
+            typeof correct === "number" &&
+            Number(answer) === correct;
+          detailParts.push(`<td>${correct ?? "-"}</td>`);
+          detailParts.push(`<td>${isCorrect ? "O" : "X"}</td>`);
         }
-        detailsHTML += `<h3>문항별 상세 결과</h3>`;
-        state.subjects.forEach(subject => {
-            detailsHTML += `<h4 class="result-subject-title">${subject}</h4>`;
-            detailsHTML += `<table class="result-table"><thead><tr>`;
-            detailsHTML += `<th>문항번호</th>`;
-            if (shouldScore) {
-                detailsHTML += `<th>정답여부</th><th>정답</th>`;
-            }
-            detailsHTML += `<th>내 응답</th><th>풀이시간(초)</th>`;
-            detailsHTML += `</tr></thead><tbody>`;
-            for (let i = 1; i <= state.questionsPerSubject; i++) {
-                const userAnswer = state.userAnswers[subject][i];
-                const timeTaken = state.timePerQuestion[subject][i];
-                detailsHTML += `<tr>`;
-                detailsHTML += `<td>${i}</td>`;
-                if (shouldScore) {
-                    const correctAnswer = state.correctAnswers[subject][i];
-                    const isCorrect = userAnswer !== "N/A" && userAnswer === correctAnswer;
-                    const correctnessDisplay = isCorrect ? '✅' : '❌';
-                    detailsHTML += `<td>${correctnessDisplay}</td>`;
-                    detailsHTML += `<td>${correctAnswer || '-'}</td>`;
-                }
-                detailsHTML += `<td>${userAnswer}</td>`;
-                detailsHTML += `<td>${timeTaken}</td>`;
-                detailsHTML += `</tr>`;
-            }
-            detailsHTML += `</tbody></table>`;
-        });
-        dom.resultPageContent.innerHTML = (shouldScore ? `<div class="result-summary">${summaryHTML}</div><hr>` : '') + `<div class="result-details">${detailsHTML}</div>`;
-    }
-    dom.nextBtn.addEventListener('click', nextQuestion);
-    dom.startBtn.addEventListener('click', init);
-    dom.pauseBtn.addEventListener('click', togglePause);
-    dom.pauseBreakBtn.addEventListener('click', togglePause);
-    dom.skipBreakBtn.addEventListener('click', skipBreak);
-
-    let lastChecked = null;
-    dom.options.forEach(option => {
-        option.addEventListener('click', function () {
-            if (this === lastChecked) {
-                this.checked = false;
-                lastChecked = null;
-            } else {
-                lastChecked = this;
-            }
-        });
+        detailParts.push(`<td>${formatSeconds(elapsedSeconds)}</td>`);
+        detailParts.push("</tr>");
+      }
+      detailParts.push("</tbody></table>");
     });
+
+    dom.resultPageContent.innerHTML = `
+      ${summaryHTML ? `<div class="result-summary">${summaryHTML}</div>` : ""}
+      <div class="result-details">${detailParts.join("")}</div>
+    `;
+  }
+
+  function formatSeconds(totalSeconds) {
+    const safeSeconds = Math.max(0, Math.round(totalSeconds));
+    const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, "0");
+    const seconds = String(safeSeconds % 60).padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  }
+
+  function switchPage(page) {
+    dom.pages.forEach((p) => {
+      p.classList.remove("active");
+      if (typeof p.scrollTop === "number") {
+        p.scrollTop = 0;
+      }
+    });
+    page.classList.add("active");
+    if (typeof page.scrollTop === "number") {
+      page.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }
+
+  function resetTools() {
+    dom.memoText.value = "";
+    dom.calcDisplay.value = "";
+    dom.penBtn.classList.add("active");
+    dom.eraserBtn.classList.remove("active");
+    clearCanvas();
+  }
+
+  function setupOptionToggle() {
+    dom.options.forEach((option) => {
+      option.addEventListener("click", () => {
+        if (lastCheckedOption === option) {
+          option.checked = false;
+          lastCheckedOption = null;
+          return;
+        }
+        lastCheckedOption = option;
+      });
+    });
+  }
+
+  function setupTabs() {
+    dom.tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        dom.tabButtons.forEach((btn) => btn.classList.remove("active"));
+        dom.tabPanes.forEach((pane) => pane.classList.remove("active"));
+        button.classList.add("active");
+        const target = button.dataset.tab;
+        const pane = document.getElementById(target);
+        if (pane) {
+          pane.classList.add("active");
+        }
+        if (target === "paint") {
+          setTimeout(resizeCanvas, 0);
+        }
+      });
+    });
+  }
+
+  function setupCanvas() {
+    resizeCanvas();
+    dom.canvas.addEventListener("mousedown", startDrawing);
+    dom.canvas.addEventListener("mousemove", draw);
+    dom.canvas.addEventListener("mouseup", stopDrawing);
+    dom.canvas.addEventListener("mouseleave", stopDrawing);
+    dom.canvas.addEventListener("touchstart", startDrawing, { passive: false });
+    dom.canvas.addEventListener("touchmove", draw, { passive: false });
+    dom.canvas.addEventListener("touchend", stopDrawing);
+    dom.penBtn.addEventListener("click", () => {
+      dom.penBtn.classList.add("active");
+      dom.eraserBtn.classList.remove("active");
+    });
+    dom.eraserBtn.addEventListener("click", () => {
+      dom.eraserBtn.classList.add("active");
+      dom.penBtn.classList.remove("active");
+    });
+    dom.clearCanvasBtn.addEventListener("click", clearCanvas);
+    window.addEventListener("resize", resizeCanvas);
+  }
+
+  function resizeCanvas() {
+    const parentRect = dom.canvas.parentElement.getBoundingClientRect();
+    const toolbarHeight = dom.penBtn.parentElement.offsetHeight;
+    dom.canvas.width = parentRect.width;
+    dom.canvas.height = parentRect.height - toolbarHeight;
+    clearCanvas();
+  }
+
+  function startDrawing(event) {
+    if (state.mode === "exam" && state.isPaused) return;
+    isDrawing = true;
+    lastPointer = getCanvasCoordinates(event);
+  }
+
+  function draw(event) {
+    if (!isDrawing) return;
+    event.preventDefault();
+    const point = getCanvasCoordinates(event);
+    ctx.beginPath();
+    ctx.moveTo(lastPointer.x, lastPointer.y);
+    ctx.lineTo(point.x, point.y);
+    if (dom.penBtn.classList.contains("active")) {
+      ctx.strokeStyle = "#1b1b1b";
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 18;
+    }
+    ctx.lineCap = "round";
+    ctx.stroke();
+    lastPointer = point;
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+  }
+
+  function clearCanvas() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height);
+  }
+
+  function getCanvasCoordinates(event) {
+    const rect = dom.canvas.getBoundingClientRect();
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function setupCalculator() {
+    dom.calcButtons.addEventListener("click", (event) => {
+      const button = event.target.closest(".calc-btn");
+      if (!button) return;
+      if (button.classList.contains("clear")) {
+        clearCalculatorDisplay();
+        return;
+      }
+      if (button.id === "backspace-btn") {
+        removeLastCalculatorChar();
+        return;
+      }
+      if (button.classList.contains("equal")) {
+        evaluateCalculator();
+        return;
+      }
+      appendCalculatorValue(button.textContent.trim());
+    });
+    window.addEventListener("keydown", handleCalculatorKeyDown);
+  }
+
+  function appendCalculatorValue(value) {
+    if (!value) return;
+    if (dom.calcDisplay.value === "Error") {
+      dom.calcDisplay.value = "";
+    }
+    dom.calcDisplay.value += value;
+    dom.calcDisplay.scrollTop = dom.calcDisplay.scrollHeight;
+  }
+
+  function clearCalculatorDisplay() {
+    dom.calcDisplay.value = "";
+  }
+
+  function removeLastCalculatorChar() {
+    dom.calcDisplay.value = dom.calcDisplay.value.slice(0, -1);
+  }
+
+  function shouldHandleCalculatorKey(event) {
+    const target = event.target;
+    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+      if (target === dom.calcDisplay) {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  }
+
+  function handleCalculatorKeyDown(event) {
+    if (!shouldHandleCalculatorKey(event)) {
+      return;
+    }
+    const key = event.key;
+    if (key === "Enter" || key === "=") {
+      event.preventDefault();
+      evaluateCalculator();
+      return;
+    }
+    if (key === "Backspace") {
+      event.preventDefault();
+      removeLastCalculatorChar();
+      return;
+    }
+    if (key === "Delete") {
+      event.preventDefault();
+      clearCalculatorDisplay();
+      return;
+    }
+    if (
+      key.toLowerCase() === "c" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      clearCalculatorDisplay();
+      return;
+    }
+    const allowedChars = "0123456789+-*/().";
+    if (allowedChars.includes(key)) {
+      event.preventDefault();
+      appendCalculatorValue(key);
+    }
+  }
+
+  function evaluateCalculator() {
+    const expression = dom.calcDisplay.value.trim();
+    if (!expression) return;
+    try {
+      const sanitized = expression.replace(/[^0-9+\-*/().]/g, "");
+      const result = Function(`"use strict";return (${sanitized})`)();
+      if (Number.isFinite(result)) {
+        dom.calcDisplay.value = String(Math.round(result * 1_000_000) / 1_000_000);
+      } else {
+        dom.calcDisplay.value = "Error";
+      }
+    } catch (error) {
+      dom.calcDisplay.value = "Error";
+    }
+  }
+
 });

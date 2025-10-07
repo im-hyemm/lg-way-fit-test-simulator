@@ -4,29 +4,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LG way fit Test</title>
+    <title>LG Way Fit Test</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="page start-screen active" id="start-screen">
-        <h1 class="main-title">LG way fit Test 실전 환경</h1>
-        <p class="sub-title">실제 시험과 동일한 환경에서 연습하세요.</p>
-        <button class="next-btn start-btn" id="start-btn">시험 시작</button>
+        <h1 class="main-title">LG Way Fit Test</h1>
+        <p class="sub-title">사용할 모드를 선택하고 연습을 시작하세요.</p>
+        <div class="mode-buttons">
+            <button class="next-btn start-btn" id="exam-mode-btn">시험 모드</button>
+            <button class="next-btn start-btn secondary" id="practice-mode-btn">연습 모드</button>
+        </div>
     </div>
 
     <div class="page app-container" id="app-container">
         <div class="header">
-            <span class="subject-title" id="subject-title"></span>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="header-left">
+                <span class="subject-title" id="subject-title"></span>
+                <div class="practice-header-time" id="practice-header-time" aria-live="polite">
+                    <span class="label">풀이 시간 : </span>
+                    <span class="value" id="practice-header-value">00:00</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="tool-btn practice-exit" id="practice-exit-btn">연습 종료</button>
                 <span class="timer" id="timer"></span>
-                <button class="tool-btn" id="pause-btn" style="padding: 5px 10px;">❚❚</button>
+                <button class="tool-btn" id="pause-btn" aria-label="타이머 일시정지">⏸</button>
             </div>
         </div>
-        <div class="question-area">
+        <div class="question-area" id="question-area">
             <div class="question-line">
                 <span class="question-number" id="question-number"></span>
-                <div class="options">
+                <div class="options" id="answer-options">
                     <label><input type="radio" name="answer" value="1"><span>1</span></label>
                     <label><input type="radio" name="answer" value="2"><span>2</span></label>
                     <label><input type="radio" name="answer" value="3"><span>3</span></label>
@@ -34,59 +44,81 @@
                     <label><input type="radio" name="answer" value="5"><span>5</span></label>
                 </div>
             </div>
-            <button class="next-btn" id="next-btn">Next</button>
+            <div class="question-navigation">
+                <select id="question-jump" class="question-jump" aria-label="문항 선택"></select>
+                <button class="nav-btn" id="prev-btn">이전 문항</button> 
+                <button class="nav-btn primary next-btn" id="next-btn">다음 문항</button>
+            </div>
         </div>
+
         <div class="tools-area">
             <div class="notebook-tabs">
-                <div class="tab-buttons"><button class="tab-btn active" data-tab="memo">메모장</button><button
-                        class="tab-btn" data-tab="paint">그림판</button></div>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="memo">메모</button>
+                    <button class="tab-btn" data-tab="paint">그림</button>
+                </div>
                 <div class="tab-content">
-                    <div class="tab-pane active" id="memo"><textarea placeholder="메모를 입력하세요..."></textarea></div>
-                    <div class="tab-pane" id="paint"><canvas id="paint-canvas"></canvas>
-                        <div class="paint-toolbar"><button class="tool-btn active" id="pen-btn">펜</button><button
-                                class="tool-btn" id="eraser-btn">지우개</button><button class="tool-btn"
-                                id="clear-canvas-btn">Clear</button></div>
+                    <div class="tab-pane active" id="memo">
+                        <textarea placeholder="자유롭게 메모하세요."></textarea>
+                    </div>
+                    <div class="tab-pane" id="paint">
+                        <canvas id="paint-canvas"></canvas>
+                        <div class="paint-toolbar">
+                            <button class="tool-btn active" id="pen-btn">펜</button>
+                            <button class="tool-btn" id="eraser-btn">지우개</button>
+                            <button class="tool-btn" id="clear-canvas-btn">전체 지우기</button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="calculator"><input type="text" id="calc-display" readonly>
-                <div class="calc-buttons"><button class="calc-btn clear">C</button><button
-                        class="calc-btn operator">(</button><button class="calc-btn operator">)</button><button
-                        class="calc-btn operator">/</button><button class="calc-btn">7</button><button
-                        class="calc-btn">8</button><button class="calc-btn">9</button><button
-                        class="calc-btn operator">*</button><button class="calc-btn">4</button><button
-                        class="calc-btn">5</button><button class="calc-btn">6</button><button
-                        class="calc-btn operator">-</button><button class="calc-btn">1</button><button
-                        class="calc-btn">2</button><button class="calc-btn">3</button><button
-                        class="calc-btn operator">+</button><button class="calc-btn">.</button><button
-                        class="calc-btn">0</button><button class="calc-btn" id="backspace-btn">⌫</button><button
-                        class="calc-btn equal">=</button></div>
+            <div class="calculator">
+                <textarea id="calc-display" rows="2" readonly></textarea>
+                <div class="calc-buttons">
+                    <button class="calc-btn clear">C</button>
+                    <button class="calc-btn operator">(</button>
+                    <button class="calc-btn operator">)</button>
+                    <button class="calc-btn operator">/</button>
+                    <button class="calc-btn">7</button>
+                    <button class="calc-btn">8</button>
+                    <button class="calc-btn">9</button>
+                    <button class="calc-btn operator">*</button>
+                    <button class="calc-btn">4</button>
+                    <button class="calc-btn">5</button>
+                    <button class="calc-btn">6</button>
+                    <button class="calc-btn operator">-</button>
+                    <button class="calc-btn">1</button>
+                    <button class="calc-btn">2</button>
+                    <button class="calc-btn">3</button>
+                    <button class="calc-btn operator">+</button>
+                    <button class="calc-btn">.</button>
+                    <button class="calc-btn">0</button>
+                    <button class="calc-btn" id="backspace-btn">DEL</button>
+                    <button class="calc-btn equal">=</button>
+                </div>
             </div>
         </div>
-        <div class="footer"><span>제작자 | SKALA 2기 4반 전혜민</span></div>
+        <div class="footer">
+            <span>제작자 | SKALA 2기 4반 전혜민</span>
+        </div>
     </div>
 
     <div class="page break-screen" id="break-screen">
         <div class="break-title">쉬는 시간</div>
         <div class="break-timer" id="break-timer"></div>
         <p class="next-subject-info" id="next-subject-info"></p>
-        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 25px; align-items: center;">
-            <button class="next-btn" id="skip-break-btn"
-                style="width: auto; padding: 0 20px; height: 40px; line-height: 40px;">
-                쉬는 시간 건너뛰기
-            </button>
-            <button class="tool-btn" id="pause-break-btn"
-                style="padding: 5px 10px; height: 40px; width: 40px;">❚❚</button>
+        <div class="break-actions">
+            <button class="next-btn" id="skip-break-btn">쉬는 시간 건너뛰기</button>
+            <button class="tool-btn" id="pause-break-btn" aria-label="휴식 타이머 일시정지">⏸</button>
         </div>
     </div>
 
     <div class="page answer-input-page" id="answer-input-page">
         <div id="answer-choice">
             <h2>시험이 종료되었습니다.</h2>
-            <p style="color: var(--light-text-color); margin-top: -10px; margin-bottom: 30px;">정답을 입력하여 채점하시겠습니까?</p>
+            <p class="answer-choice-desc">정답을 입력하여 채점을 진행하시겠어요?</p>
             <div class="choice-buttons">
-                <button class="choice-btn" id="show-time-only-btn">아니요, 풀이 시간만 보기</button>
-                <button class="choice-btn score-btn" id="start-scoring-btn">예, 정답 입력하기</button>
+                <button class="choice-btn" id="show-time-only-btn">시간만 확인</button>
+                <button class="choice-btn score-btn" id="start-scoring-btn">정답 입력</button>
             </div>
         </div>
         <div id="answer-form-container" style="display: none;">
@@ -97,12 +129,11 @@
     </div>
 
     <div class="page result-page" id="result-page">
-        <h2>📜 시험 결과</h2>
+        <h2>시험 결과</h2>
         <div class="result-page-content" id="result-page-content"></div>
     </div>
 
     <script src="script.js"></script>
-
 </body>
 
 </html>
