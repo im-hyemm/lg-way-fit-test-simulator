@@ -316,16 +316,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else {
       saveActiveQuestion();
-      const subject = getCurrentSubject();
-      const questionLimit = getSubjectQuestionLimit(subject);
-      if (state.currentQuestionIndex >= questionLimit - 1) {
+      if (state.mode === "exam") {
         if (state.currentSubjectIndex >= state.subjects.length - 1) {
           finishExam();
         } else {
           startBreak();
         }
       } else {
-        changeQuestion(state.currentQuestionIndex + 1);
+        const subject = getCurrentSubject();
+        const questionLimit = getSubjectQuestionLimit(subject);
+        if (state.currentQuestionIndex >= questionLimit - 1) {
+          if (state.currentSubjectIndex >= state.subjects.length - 1) {
+            finishExam();
+          } else {
+            startBreak();
+          }
+        } else {
+          changeQuestion(state.currentQuestionIndex + 1);
+        }
       }
     }
   }
